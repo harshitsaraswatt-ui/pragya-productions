@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pragya Production</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f5f9;color:#172033;font-family:Arial,sans-serif}
+header{background:#0f172a;color:white;padding:24px 18px 28px;border-radius:0 0 24px 24px}
+.brand{font-size:12px;letter-spacing:3px;color:#94a3b8}
+h1{margin:9px 0 5px;font-size:26px}
+.sub{color:#cbd5e1;font-size:13px}
+main{padding:16px;max-width:600px;margin:auto}
+.section-title{font-size:17px;font-weight:bold;margin:22px 0 12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:white;border:1px solid #e2e8f0;border-radius:17px;padding:17px;box-shadow:0 3px 12px #0f172a08}
+.label{font-size:12px;color:#64748b}
+.value{font-size:25px;font-weight:bold;margin-top:9px}
+.blue{color:#2563eb}.green{color:#059669}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{border:0;border-radius:12px;padding:14px;font-weight:bold;font-size:14px;cursor:pointer}
+.menu button{background:white;color:#172033;border:1px solid #e2e8f0;text-align:left;min-height:67px}
+.primary{background:#1d4ed8;color:white;width:100%;margin-top:12px}
+.dark{background:#0f172a;color:white;width:100%;margin-top:10px}
+input,select{width:100%;padding:13px;margin-top:7px;border:1px solid #cbd5e1;border-radius:10px;background:white;font-size:15px}
+label{display:block;font-size:13px;color:#475569;margin-top:14px}
+.panel{display:none;background:white;border:1px solid #e2e8f0;border-radius:17px;padding:17px;margin-top:15px}
+.entry{padding:12px 0;border-bottom:1px solid #e2e8f0;font-size:13px;overflow-wrap:anywhere}
+.entry:last-child{border-bottom:0}
+.small{font-size:12px;color:#64748b}
+footer{text-align:center;padding:25px;color:#94a3b8;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">PRAGYA · BRS GROUP</div>
+<h1>Production Manager</h1>
+<div class="sub">Mill Operations · Private Offline Records</div>
+</header>
+<main>
+<div class="section-title">Today's Overview</div>
+<div class="stats">
+<div class="card"><div class="label">Total Entries</div><div class="value blue" id="total">0</div></div>
+<div class="card"><div class="label">Today's Entries</div><div class="value green" id="today">0</div></div>
+</div>
+
+<div class="section-title">Operations</div>
+<div class="menu">
+<button onclick="show('production')">＋ Production Entry</button>
+<button onclick="show('stock')">▤ Stock Register</button>
+<button onclick="show('transfer')">⇄ Stock Transfer</button>
+<button onclick="show('dispatch')">↗ Dispatch Record</button>
+<button onclick="show('records')">▣ All Records</button>
+<button onclick="show('backup')">⬇ Backup & Export</button>
+</div>
+
+<div class="panel" id="production">
+<b>New Production Entry</b>
+<label>Date</label><input type="date" id="pdate">
+<label>Plant</label><select id="plant"><option>Moong Mogar</option><option>Moong Daal</option></select>
+<label>Raw Material / Item</label><input id="pitem" placeholder="e.g. Moong">
+<label>Input Quantity (kg)</label><input id="pin" type="number" min="0" placeholder="0">
+<label>Output Quantity (kg)</label><input id="pout" type="number" min="0" placeholder="0">
+<label>Notes</label><input id="pnote" placeholder="Optional">
+<button class="primary" onclick="saveProduction()">Save Production</button>
+</div>
+
+<div class="panel" id="stock">
+<b>Stock Register</b>
+<p class="small">Stock is calculated from saved production entries and dispatch records.</p>
+<div id="stocklist"></div>
+</div>
+
+<div class="panel" id="transfer">
+<b>Stock Transfer</b>
+<label>Date</label><input type="date" id="tdate">
+<label>Item / Product</label><input id="titem" placeholder="Item name">
+<label>From</label><input id="tfrom" placeholder="Source plant / stack">
+<label>To</label><input id="tto" placeholder="Destination plant / stack">
+<label>Quantity (kg)</label><input id="tqty" type="number" min="0">
+<button class="primary" onclick="saveTransfer()">Save Transfer</button>
+</div>
+
+<div class="panel" id="dispatch">
+<b>Dispatch Record</b>
+<label>Date</label><input type="date" id="ddate">
+<label>Party / Customer</label><input id="party" placeholder="Customer name">
+<label>Product</label><input id="ditem" placeholder="Product name">
+<label>Quantity (kg)</label><input id="dqty" type="number" min="0">
+<label>Vehicle / Challan</label><input id="vehicle" placeholder="Optional">
+<button class="primary" onclick="saveDispatch()">Save Dispatch</button>
+</div>
+
+<div class="panel" id="records">
+<b>Saved Records</b>
+<div id="recordlist"></div>
+<button class="dark" onclick="clearRecords()">Clear All Records</button>
+<div class="small">Clearing records cannot be undone unless you have a backup.</div>
+</div>
+
+<div class="panel" id="backup">
+<b>Backup & Export</b>
+<p class="small">Download a JSON backup to your phone. Keep it safe so you can restore your records later.</p>
+<button class="primary" onclick="exportJSON()">Download Full Backup</button>
+<button class="dark" onclick="exportCSV()">Export Records CSV</button>
+<label>Restore a JSON backup</label>
+<input type="file" id="restorefile" accept=".json,application/json">
+<button class="primary" onclick="restoreJSON()">Restore Backup</button>
+</div>
+
+<footer>PRAGYA PRODUCTION<br><br>Made by Harshit</footer>
+</main>
+<script>
+const KEY='pragya_production_records_v1';
+let records=[];
+try{records=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(records))records=[]}catch(e){records=[]}
+const $=id=>document.getElementById(id);
+const todayISO=()=>{let d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+['pdate','tdate','ddate'].forEach(id=>$(id).value=todayISO());
+function persist(){localStorage.setItem(KEY,JSON.stringify(records));refresh()}
+function show(id){document.querySelectorAll('.panel').forEach(p=>p.style.display='none');$(id).style.display='block';if(id==='records')renderRecords();if(id==='stock')renderStock();$(id).scrollIntoView({behavior:'smooth',block:'start'})}
+function add(type,data){records.unshift({id:Date.now()+'-'+Math.random().toString(16).slice(2),type,...data,savedAt:new Date().toISOString()});persist();alert('Record saved successfully!')}
+function num(id){return Number($(id).value)}
+function validDate(id){return !!$(id).value}
+function saveProduction(){
+if(!validDate('pdate')||!$('pitem').value.trim()||num('pin')<=0||num('pout')<0){alert('Date, item and valid quantities bharo.');return}
+add('Production',{date:$('pdate').value,plant:$('plant').value,item:$('pitem').value.trim(),inputKg:num('pin'),outputKg:num('pout'),notes:$('pnote').value.trim()});
+['pitem','pin','pout','pnote'].forEach(id=>$(id).value='')
+}
+function saveTransfer(){
+if(!validDate('tdate')||!$('titem').value.trim()||!$('tfrom').value.trim()||!$('tto').value.trim()||num('tqty')<=0){alert('Saari zaroori details bharo.');return}
+add('Transfer',{date:$('tdate').value,item:$('titem').value.trim(),from:$('tfrom').value.trim(),to:$('tto').value.trim(),quantityKg:num('tqty')});
+['titem','tfrom','tto','tqty'].forEach(id=>$(id).value='')
+}
+function saveDispatch(){
+if(!validDate('ddate')||!$('party').value.trim()||!$('ditem').value.trim()||num('dqty')<=0){alert('Date, party, product aur quantity bharo.');return}
+add('Dispatch',{date:$('ddate').value,party:$('party').value.trim(),item:$('ditem').value.trim(),quantityKg:num('dqty'),vehicle:$('vehicle').value.trim()});
+['party','ditem','dqty','vehicle'].forEach(id=>$(id).value='')
+}
+function refresh(){$('total').textContent=records.length;$('today').textContent=records.filter(r=>r.date===todayISO()).length}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function details(r){return Object.entries(r).filter(([k])=>!['id','type','savedAt'].includes(k)).map(([k,v])=>esc(k)+': '+esc(v)).join(' · ')}
+function renderRecords(){$('recordlist').innerHTML=records.length?records.map(r=>'<div class="entry"><b>'+esc(r.type)+'</b> · '+esc(r.date||'')+'<br>'+details(r)+'</div>').join(''):'<p class="small">Abhi koi record nahi hai.</p>'}
+function renderStock(){
+let sums={};
+records.forEach(r=>{if(r.type==='Production'){let k=r.plant+' — '+r.item;sums[k]=(sums[k]||0)+Number(r.outputKg||0)}if(r.type==='Dispatch'){let k=r.item;sums[k]=(sums[k]||0)-Number(r.quantityKg||0)}});
+$('stocklist').innerHTML=Object.keys(sums).length?Object.entries(sums).map(([k,v])=>'<div class="entry">'+esc(k)+'<br><b>'+v.toLocaleString()+' kg</b></div>').join(''):'<p class="small">Stock dekhne ke liye pehle production entry save karo.</p>'
+}
+function download(name,content,type){let blob=new Blob([content],{type});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function exportJSON(){download('Pragya-Production-Backup-'+todayISO()+'.json',JSON.stringify({app:'Pragya Production',version:1,records},null,2),'application/json')}
+function exportCSV(){
+let rows=[['Type','Date','Plant','Item','Input kg','Output kg','Quantity kg','Party','From','To','Vehicle','Notes']];
+records.forEach(r=>rows.push([r.type,r.date,r.plant,r.item,r.inputKg,r.outputKg,r.quantityKg,r.party,r.from,r.to,r.vehicle,r.notes].map(v=>String(v??'').replace(/"/g,'""'))));
+download('Pragya-Production-'+todayISO()+'.csv',rows.map(row=>row.map(v=>'"'+v+'"').join(',')).join('\r\n'),'text/csv;charset=utf-8')
+}
+function restoreJSON(){
+let f=$('restorefile').files[0];if(!f){alert('Pehle backup file select karo.');return}
+let reader=new FileReader();reader.onload=()=>{try{let d=JSON.parse(reader.result);let arr=Array.isArray(d)?d:d.records;if(!Array.isArray(arr))throw Error();if(!confirm('Current records replace ho jayenge. Continue?'))return;records=arr;persist();alert('Backup restored.')}catch(e){alert('Valid Pragya JSON backup select karo.')}};reader.readAsText(f)
+}
+function clearRecords(){if(confirm('Saare records delete karne hain? Pehle backup le lena.')){records=[];persist();renderRecords()}}
+refresh();
+</script>
+</body>
+</html>
